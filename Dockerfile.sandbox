@@ -1,4 +1,4 @@
-FROM criyle/go-judge:v1.9.9 AS go-judge 
+FROM criyle/go-judge:v1.11.2 AS go-judge 
 
 FROM debian:12
 
