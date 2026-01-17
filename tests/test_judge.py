@@ -102,3 +102,28 @@ async def test_special_judge_wrong_answer():
     assert result.judge == JudgeStatus.WrongAnswer
     for testcase in result.testcases:
         assert testcase.judge == JudgeStatus.WrongAnswer
+
+
+@pytest.mark.asyncio
+async def test_special_judge_checker_compile_error():
+    submission = Submission(
+        sid=1,
+        timeLimit=1000,
+        memoryLimit=32768,
+        testcases=[Testcase(
+            uuid='bab33078-ea14-46ff-93bc-3a5a6c19fda6',
+            input=MemoryFile('1 1 2\n'),
+            output=MemoryFile('WHATEVER\n')
+        )],
+        language=Language.Python,
+        code="import this",
+        type=ProblemType.SpecialJudge,
+        additionCode=r"¯\_(ツ)_/¯"
+    )
+
+    async with SandboxClient(endpoint) as client:
+        judger = Judger(client, submission)
+        result = await judger.get_result()
+    assert result.judge == JudgeStatus.SystemError
+    for testcase in result.testcases:
+        assert testcase.judge == JudgeStatus.SystemError

@@ -16,7 +16,7 @@ testcases = [
     ),
 ]
 
-interactor = r"""
+interactor_code = r"""
 #include "testlib.h"
 #include <iostream>
 using namespace std;
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
 """
 
 
-async def judge_code(code: str) -> SubmissionResult:
+async def judge_code(code: str, interactor: str = interactor_code) -> SubmissionResult:
     submission = Submission(
         sid=1,
         timeLimit=1000,
@@ -109,3 +109,28 @@ async def test_interaction_runtime_error():
     assert result.judge == JudgeStatus.RuntimeError
     for testcase in result.testcases:
         assert testcase.judge == JudgeStatus.RuntimeError
+
+
+@pytest.mark.asyncio
+async def test_interaction_bad_interactor():
+
+    result = await judge_code(r"""
+from sys import stdin, stdout
+
+l, r = 1, 1000000000
+while l <= r:
+    mid = (l + r) // 2
+    print(mid)
+    stdout.flush()
+    res = int(stdin.readline())
+    if res == 0:
+        l = mid + 1
+    elif res == 2:
+        r = mid - 1
+    else:
+        break
+""", interactor_code.replace(r"quitf(_ok, ", r"return -1; //"))
+
+    assert result.judge == JudgeStatus.SystemError
+    for testcase in result.testcases:
+        assert testcase.judge == JudgeStatus.SystemError

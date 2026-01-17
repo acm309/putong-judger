@@ -168,3 +168,29 @@ async def test_compile_error():
     assert result.judge == JudgeStatus.CompileError
     assert len(result.testcases) == 0
     assert "SyntaxError" in result.error
+
+
+@pytest.mark.asyncio
+async def test_wrong_answer():
+
+    result = await judge_code(
+        "print(42)",
+        Language.Python
+    )
+    assert result.judge == JudgeStatus.WrongAnswer
+    for testcase in result.testcases:
+        assert testcase.judge == JudgeStatus.WrongAnswer
+
+
+@pytest.mark.asyncio
+async def test_presentation_error():
+
+    result = await judge_code(r"""
+import sys
+for line in sys.stdin:
+    a, b = map(int, line.split())
+    print(' ' + str(a + b))
+""", Language.Python)
+    assert result.judge == JudgeStatus.PresentationError
+    for testcase in result.testcases:
+        assert testcase.judge == JudgeStatus.PresentationError

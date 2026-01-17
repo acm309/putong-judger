@@ -280,15 +280,28 @@ class Judger:
         if user_result.status != SandboxStatus.Accepted:
             result.judge = self.STATUS_MAP.get(
                 user_result.status, JudgeStatus.SystemError)
-        elif interactor_result.status == SandboxStatus.NonzeroExitStatus:
-            result.judge = {
-                1: JudgeStatus.WrongAnswer,
-                2: JudgeStatus.PresentationError,
-            }.get(interactor_result.exitStatus, JudgeStatus.RuntimeError)
-        elif interactor_result.status != SandboxStatus.Accepted:
-            result.judge = JudgeStatus.SystemError
-        else:
+
+        elif interactor_result.status == SandboxStatus.Accepted:
             result.judge = JudgeStatus.Accepted
+
+        elif interactor_result.status == SandboxStatus.NonzeroExitStatus:
+            if interactor_result.exitStatus == 1:
+                result.judge = JudgeStatus.WrongAnswer
+            elif interactor_result.exitStatus == 2:
+                result.judge = JudgeStatus.PresentationError
+            else:
+                logger.error(
+                    "Interactor exited with unexpected exit status: %d",
+                    interactor_result.exitStatus
+                )
+                result.judge = JudgeStatus.SystemError
+
+        else:
+            logger.error(
+                "Interactor execution failed with status: %s",
+                interactor_result.status
+            )
+            result.judge = JudgeStatus.SystemError
 
         logger.debug(
             "Testcase '%s' finished with judge status: '%s'",

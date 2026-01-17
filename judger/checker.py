@@ -134,9 +134,15 @@ class TestlibChecker:
 
         if checker_result.status == SandboxStatus.Accepted:
             return JudgeStatus.Accepted
+
         elif checker_result.status == SandboxStatus.NonzeroExitStatus:
             return JudgeStatus.WrongAnswer
+
         else:
+            logger.error(
+                "Checker execution failed with status: %s",
+                checker_result.status
+            )
             return JudgeStatus.SystemError
 
 
@@ -145,12 +151,6 @@ class DefaultChecker(TestlibChecker):
     RUN_CMD: List[str] = [
         "./Checker", "tc.in", 'tc.out', 'user.out'
     ]
-
-    STATUS_MAP: dict[int, JudgeStatus] = {
-        0: JudgeStatus.Accepted,
-        1: JudgeStatus.WrongAnswer,
-        2: JudgeStatus.PresentationError
-    }
 
     def __init__(
         self,
@@ -204,9 +204,24 @@ class DefaultChecker(TestlibChecker):
             await self.client.run_command([cmd])
         )[0]
 
-        if checker_result.exitStatus not in self.STATUS_MAP:
-            raise RuntimeError(
-                "Checker failed with unexpected exit status: %d" %
-                checker_result.exitStatus
+        if checker_result.status == SandboxStatus.Accepted:
+            return JudgeStatus.Accepted
+
+        elif checker_result.status == SandboxStatus.NonzeroExitStatus:
+            if checker_result.exitStatus == 1:
+                return JudgeStatus.WrongAnswer
+            elif checker_result.exitStatus == 2:
+                return JudgeStatus.PresentationError
+            else:
+                logger.error(
+                    "Checker exited with unexpected exit status: %d",
+                    checker_result.exitStatus
+                )
+                return JudgeStatus.SystemError
+
+        else:
+            logger.error(
+                "Checker execution failed with status: %s",
+                checker_result.status
             )
-        return self.STATUS_MAP.get(checker_result.exitStatus)
+            return JudgeStatus.SystemError
