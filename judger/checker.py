@@ -214,7 +214,7 @@ class DefaultChecker(TestlibChecker):
                 return JudgeStatus.PresentationError
             else:
                 logger.error(
-                    "Checker exited with unknown exit code: %d",
+                    "Checker exited with unexpected exit status: %d",
                     checker_result.exitStatus
                 )
                 return JudgeStatus.SystemError
