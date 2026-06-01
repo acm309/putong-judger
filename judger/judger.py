@@ -3,7 +3,8 @@ import logging
 from typing import List, Optional, Set
 
 from .client import SandboxClient
-from .checker import TestlibChecker, DefaultChecker
+from .checker import TestlibChecker
+from .config import DEFAULT_CHECKER_CODE
 from .config import LOGGER_NAME
 from .language import LanguageRegistry
 from .models import (
@@ -83,7 +84,10 @@ class Judger:
             )
 
         if self.submission.type == ProblemType.Traditional:
-            self.checker = DefaultChecker(client=self.client)
+            self.checker = TestlibChecker(
+                client=self.client,
+                code=DEFAULT_CHECKER_CODE
+            )
         else:
             self.checker = TestlibChecker(
                 client=self.client,
@@ -191,12 +195,13 @@ class Judger:
 
         output_file = PreparedFile(run_result.fileIds['stdout'])
 
-        if run_result.status == SandboxStatus.Accepted:
-            result.judge = await self.checker.check(
-                testcase.input, testcase.output, output_file)
-        else:
-            result.judge = self.STATUS_MAP.get(
-                run_result.status, JudgeStatus.SystemError)
+        match run_result.status:
+            case SandboxStatus.Accepted:
+                result.judge = await self.checker.check(
+                    testcase.input, testcase.output, output_file)
+            case _:
+                result.judge = self.STATUS_MAP.get(
+                    run_result.status, JudgeStatus.SystemError)
 
         self.cleanup_tasks.append(
             asyncio.create_task(
@@ -281,27 +286,25 @@ class Judger:
             result.judge = self.STATUS_MAP.get(
                 user_result.status, JudgeStatus.SystemError)
 
-        elif interactor_result.status == SandboxStatus.Accepted:
-            result.judge = JudgeStatus.Accepted
-
-        elif interactor_result.status == SandboxStatus.NonzeroExitStatus:
-            if interactor_result.exitStatus == 1:
-                result.judge = JudgeStatus.WrongAnswer
-            elif interactor_result.exitStatus == 2:
-                result.judge = JudgeStatus.PresentationError
-            else:
-                logger.error(
-                    "Interactor exited with unexpected exit status: %d",
-                    interactor_result.exitStatus
-                )
-                result.judge = JudgeStatus.SystemError
-
         else:
-            logger.error(
-                "Interactor execution failed with status: %s",
-                interactor_result.status
-            )
-            result.judge = JudgeStatus.SystemError
+            match interactor_result.status, interactor_result.exitStatus:
+                case (SandboxStatus.Accepted, _):
+                    result.judge = JudgeStatus.Accepted
+                case (SandboxStatus.NonzeroExitStatus, 1):
+                    result.judge = JudgeStatus.WrongAnswer
+                case (SandboxStatus.NonzeroExitStatus, 2):
+                    result.judge = JudgeStatus.PresentationError
+                case (SandboxStatus.NonzeroExitStatus, 3):
+                    result.judge = JudgeStatus.SystemError
+                    logger.error("Interactor reported _fail")
+                case (SandboxStatus.NonzeroExitStatus, _):
+                    result.judge = JudgeStatus.WrongAnswer
+                case _:
+                    logger.error(
+                        "Interactor execution failed with status: %s",
+                        interactor_result.status
+                    )
+                    result.judge = JudgeStatus.SystemError
 
         logger.debug(
             "Testcase '%s' finished with judge status: '%s'",

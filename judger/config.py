@@ -17,7 +17,9 @@ DEFAULT_CPU_RATE_LIMIT = 1000
 # 输出限制，单位 Byte (16MB)
 DEFAULT_OUTPUT_LIMIT = 16 * 1024 * 1024
 # 默认检查器
-DEFAULT_CHECKER = Path(__file__).parent / 'checkers' / 'default.cpp'
+DEFAULT_CHECKER = Path(__file__).parent / 'checkers' / 'lcmp.cpp'
+# 默认检查器代码内容
+DEFAULT_CHECKER_CODE = DEFAULT_CHECKER.read_text(encoding='utf-8')
 # 测试库路径
 TESTLIB_PATH = Path(__file__).parent / "testlib" / "testlib.h"
 # 默认沙箱环境变量
