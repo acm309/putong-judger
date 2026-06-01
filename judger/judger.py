@@ -195,13 +195,12 @@ class Judger:
 
         output_file = PreparedFile(run_result.fileIds['stdout'])
 
-        match run_result.status:
-            case SandboxStatus.Accepted:
-                result.judge = await self.checker.check(
-                    testcase.input, testcase.output, output_file)
-            case _:
-                result.judge = self.STATUS_MAP.get(
-                    run_result.status, JudgeStatus.SystemError)
+        if run_result.status == SandboxStatus.Accepted:
+            result.judge = await self.checker.check(
+                testcase.input, testcase.output, output_file)
+        else:
+            result.judge = self.STATUS_MAP.get(
+                run_result.status, JudgeStatus.SystemError)
 
         self.cleanup_tasks.append(
             asyncio.create_task(
