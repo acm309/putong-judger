@@ -141,11 +141,11 @@ class TestlibChecker:
             case (SandboxStatus.NonzeroExitStatus, 3):
                 logger.error("Checker reported _fail")
                 return JudgeStatus.SystemError
-            case (SandboxStatus.NonzeroExitStatus, _):
-                return JudgeStatus.WrongAnswer
             case _:
                 logger.error(
-                    "Checker execution failed with status: %s",
-                    checker_result.status
+                    "Checker execution failed with status: %s, "
+                    "exit code: %s",
+                    checker_result.status,
+                    checker_result.exitStatus
                 )
                 return JudgeStatus.SystemError

@@ -298,8 +298,10 @@ class Judger:
                     logger.error("Interactor reported _fail")
                 case _:
                     logger.error(
-                        "Interactor execution failed with status: %s",
-                        interactor_result.status
+                        "Interactor execution failed with status: %s, "
+                        "exit code: %s",
+                        interactor_result.status,
+                        interactor_result.exitStatus
                     )
                     result.judge = JudgeStatus.SystemError
 
