@@ -297,8 +297,6 @@ class Judger:
                 case (SandboxStatus.NonzeroExitStatus, 3):
                     result.judge = JudgeStatus.SystemError
                     logger.error("Interactor reported _fail")
-                case (SandboxStatus.NonzeroExitStatus, _):
-                    result.judge = JudgeStatus.WrongAnswer
                 case _:
                     logger.error(
                         "Interactor execution failed with status: %s",
