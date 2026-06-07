@@ -13,7 +13,7 @@ from .config import (
     RESULT_QUEUE_NAME,
     TASK_QUEUE_NAME
 )
-from .judger import DefaultChecker, Judger
+from .judger import Judger
 from .models import (
     JudgeStatus,
     Submission,

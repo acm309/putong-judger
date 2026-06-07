@@ -1,10 +1,9 @@
 import logging
 from hashlib import sha256
-from pathlib import Path
 from typing import List, Optional, Union
 
 from .client import SandboxClient
-from .config import DEFAULT_CHECKER, LOGGER_NAME, TESTLIB_PATH
+from .config import LOGGER_NAME, TESTLIB_PATH
 from .models import (
     JudgeStatus,
     SandboxStatus,
@@ -132,96 +131,21 @@ class TestlibChecker:
 
         logger.debug("Checker result: %s", checker_result)
 
-        if checker_result.status == SandboxStatus.Accepted:
-            return JudgeStatus.Accepted
-
-        elif checker_result.status == SandboxStatus.NonzeroExitStatus:
-            return JudgeStatus.WrongAnswer
-
-        else:
-            logger.error(
-                "Checker execution failed with status: %s",
-                checker_result.status
-            )
-            return JudgeStatus.SystemError
-
-
-class DefaultChecker(TestlibChecker):
-
-    RUN_CMD: List[str] = [
-        "./Checker", "tc.in", 'tc.out', 'user.out'
-    ]
-
-    def __init__(
-        self,
-        client: SandboxClient,
-        code_file: Union[str, Path] = DEFAULT_CHECKER
-    ) -> None:
-        self.client = client
-        self.compiled_file: Optional[PreparedFile] = None
-
-        try:
-            with open(code_file, 'rt', encoding='utf-8') as f:
-                self.code = f.read()
-        except FileNotFoundError as e:
-            raise FileNotFoundError(
-                "Checker code file not found: %s" %
-                code_file
-            ) from e
-
-        logger.debug(
-            "Checker initialized with code file: '%s'",
-            code_file
-        )
-
-    async def check(
-        self,
-        input_file: Union[LocalFile, MemoryFile, PreparedFile],
-        output_file: Union[LocalFile, MemoryFile, PreparedFile],
-        user_file: Union[LocalFile, MemoryFile, PreparedFile]
-    ) -> JudgeStatus:
-        logger.debug(
-            "Checking with 'tc.in': %s, 'tc.out': %s, 'user.out': %s",
-            input_file, output_file, user_file
-        )
-        await self.compile()
-
-        cmd = SandboxCmd(
-            args=self.RUN_CMD,
-            files=[
-                MemoryFile(""),
-                Collector("stdout"),
-                Collector("stderr")
-            ],
-            copyIn={
-                self.COMPILED_FILENAME: self.compiled_file,
-                "tc.in": input_file,
-                "tc.out": output_file,
-                "user.out": user_file
-            }
-        )
-        checker_result = (
-            await self.client.run_command([cmd])
-        )[0]
-
-        if checker_result.status == SandboxStatus.Accepted:
-            return JudgeStatus.Accepted
-
-        elif checker_result.status == SandboxStatus.NonzeroExitStatus:
-            if checker_result.exitStatus == 1:
+        match checker_result.status, checker_result.exitStatus:
+            case (SandboxStatus.Accepted, _):
+                return JudgeStatus.Accepted
+            case (SandboxStatus.NonzeroExitStatus, 1):
                 return JudgeStatus.WrongAnswer
-            elif checker_result.exitStatus == 2:
+            case (SandboxStatus.NonzeroExitStatus, 2):
                 return JudgeStatus.PresentationError
-            else:
+            case (SandboxStatus.NonzeroExitStatus, 3):
+                logger.error("Checker reported _fail")
+                return JudgeStatus.SystemError
+            case _:
                 logger.error(
-                    "Checker exited with unexpected exit status: %d",
+                    "Checker execution failed with status: %s, "
+                    "exit code: %s",
+                    checker_result.status,
                     checker_result.exitStatus
                 )
                 return JudgeStatus.SystemError
-
-        else:
-            logger.error(
-                "Checker execution failed with status: %s",
-                checker_result.status
-            )
-            return JudgeStatus.SystemError
